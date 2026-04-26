@@ -1,0 +1,132 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lecture Summary Platform</title>
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<!-- Navbar -->
+<header>
+<h2>📚 Lecture Notes Hub</h2>
+
+<div>
+<button id="addBtn" onclick="showSection('formSection')">Add Summary</button>
+<button onclick="logout()">Logout</button>
+</div>
+
+</header>
+
+<!-- Hero Section -->
+<section class="hero">
+<div class="hero-text">
+<h1>Share Your Lecture Summaries</h1>
+<p>Help students learn faster and smarter</p>
+<button onclick="showSection('notesSection')">Get Started</button>
+</div>
+
+<div class="hero-img">
+<img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" class="hero-animation">
+</div>
+</section>
+
+<!-- Navigation Buttons -->
+
+<section class="nav-buttons">
+
+<button onclick="showSection('formSection')">➕ Add Summary</button>
+
+<button onclick="showSection('attendanceSection')">🎓 Attendance</button>
+
+<button onclick="showSection('dashboardSection')">📊 Dashboard</button>
+
+<button onclick="showSection('notesSection')">📚 Lecture Notes</button>
+
+</section>
+
+<!-- Attendance Section -->
+
+<section class="attendance" id="attendanceSection">
+
+<h2>Mark Attendance</h2>
+
+<input type="text" id="student" placeholder="Student Name">
+<input type="text" id="courseAttend" placeholder="Course">
+
+<button onclick="markAttendance()">Mark Attendance</button>
+
+<br><br>
+
+<button onclick="checkAttendance()">Check Attendance</button>
+
+<p id="attendanceCount"></p>
+
+</section>
+
+<!-- Add Summary Form -->
+
+<section class="form-section" id="formSection">
+
+<h2>Add Lecture Summary</h2>
+
+<input type="text" id="course" placeholder="Course Name">
+<input type="date" id="date">
+<textarea id="summary" placeholder="Write summary..."></textarea>
+
+<button onclick="addSummary()">Submit</button>
+
+</section>
+
+<!-- Dashboard -->
+
+<section class="dashboard" id="dashboardSection">
+
+<h2>Dashboard</h2>
+
+<div class="stats">
+
+<div class="card">
+<h3 id="totalNotes">0</h3>
+<p>Total Notes</p>
+</div>
+
+<div class="card">
+<h3 id="topRated">0</h3>
+<p>Top Rated Notes</p>
+</div>
+
+</div>
+
+</section>
+
+<!-- Notes Section -->
+
+<section class="notes-section" id="notesSection">
+
+<h2>Lecture Summaries</h2>
+
+<div class="search-box">
+
+<input type="text" id="search" placeholder="Search by course...">
+
+<input type="date" id="filterDate">
+
+<button onclick="searchNotes()">Search</button>
+
+</div>
+
+<div id="notesContainer"></div>
+
+</section>
+
+<script src="auth.js"></script>
+<script src="project.js"></script>
+
+</body>
+</html>
