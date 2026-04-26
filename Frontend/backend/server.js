@@ -34,7 +34,10 @@ const Attendance = require('./models/attendence');
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..')));
+// Serve static files from the 'Frontend' directory
+const staticPath = path.join(process.cwd(), 'Frontend');
+app.use(express.static(staticPath));
+
 
 // Auth Middleware
 const authenticate = (req, res, next) => {
