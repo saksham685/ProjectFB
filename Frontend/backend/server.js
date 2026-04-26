@@ -3,18 +3,33 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = 'lecture_notes_hub_secret_2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'lecture_notes_hub_secret_2024';
+const MONGO_URI = process.env.MONGO_URI;
 
-// In-memory Data Store
-const db = {
+// In-memory Data Store (Fallback)
+let db = {
     users: [],
     notes: [],
     attendance: []
 };
+
+// MongoDB Connection
+if (MONGO_URI) {
+    mongoose.connect(MONGO_URI)
+        .then(() => console.log('Connected to MongoDB'))
+        .catch(err => console.error('MongoDB connection error:', err));
+} else {
+    console.log('Using In-Memory Database (Data will not persist)');
+}
+
+// Models
+const User = require('./models/user');
+const Attendance = require('./models/attendence');
 
 // Middleware
 app.use(cors());
@@ -41,12 +56,23 @@ const authenticate = (req, res, next) => {
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
-        if (db.users.find(u => u.email === email)) {
-            return res.status(400).json({ error: 'Email already exists' });
+        
+        if (MONGO_URI) {
+            const existingUser = await User.findOne({ email });
+            if (existingUser) return res.status(400).json({ error: 'Email already exists' });
+            
+            const hashedPassword = await bcrypt.hash(password, 10);
+            const user = new User({ username, email, password: hashedPassword });
+            await user.save();
+        } else {
+            if (db.users.find(u => u.email === email)) {
+                return res.status(400).json({ error: 'Email already exists' });
+            }
+            const hashedPassword = await bcrypt.hash(password, 10);
+            const user = { id: uuidv4(), username, email, password: hashedPassword };
+            db.users.push(user);
         }
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = { id: uuidv4(), username, email, password: hashedPassword };
-        db.users.push(user);
+        
         res.status(201).json({ message: 'User registered successfully' });
     } catch (err) {
         res.status(400).json({ error: err.message });
@@ -57,23 +83,36 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = db.users.find(u => u.email === email);
+        let user;
+        
+        if (MONGO_URI) {
+            user = await User.findOne({ email });
+        } else {
+            user = db.users.find(u => u.email === email);
+        }
+        
         if (!user) return res.status(400).json({ error: 'User not found' });
 
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
 
-        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '1d' });
+        const userId = MONGO_URI ? user._id : user.id;
+        const token = jwt.sign({ id: userId, username: user.username }, JWT_SECRET, { expiresIn: '1d' });
         res.json({ token, username: user.username });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// Notes Routes
-app.get('/api/notes', (req, res) => {
+// Notes Routes (Using in-memory for notes as well if no MONGO_URI, but let's keep it simple)
+app.get('/api/notes', async (req, res) => {
     const { search, date } = req.query;
-    let filteredNotes = db.notes.map(note => {
+    let notes = db.notes;
+    
+    // Note: To keep this demo simple and "jldi", I'm keeping notes in memory for now 
+    // but the user can easily extend this to MongoDB if they want.
+    
+    let filteredNotes = notes.map(note => {
         const user = db.users.find(u => u.id === note.authorId);
         return { ...note, author: user ? { username: user.username } : null };
     });
@@ -114,15 +153,27 @@ app.delete('/api/notes/:id', authenticate, (req, res) => {
 });
 
 // Attendance Routes
-app.post('/api/attendance', (req, res) => {
+app.post('/api/attendance', async (req, res) => {
     const { student, course } = req.body;
-    const attendance = { id: uuidv4(), student, course, date: new Date() };
-    db.attendance.push(attendance);
-    res.status(201).json(attendance);
+    
+    if (MONGO_URI) {
+        const attendance = new Attendance({ student, course });
+        await attendance.save();
+        res.status(201).json(attendance);
+    } else {
+        const attendance = { id: uuidv4(), student, course, date: new Date() };
+        db.attendance.push(attendance);
+        res.status(201).json(attendance);
+    }
 });
 
-app.get('/api/attendance/count', (req, res) => {
-    res.json({ count: db.attendance.length });
+app.get('/api/attendance/count', async (req, res) => {
+    if (MONGO_URI) {
+        const count = await Attendance.countDocuments();
+        res.json({ count });
+    } else {
+        res.json({ count: db.attendance.length });
+    }
 });
 
 // Dashboard Stats
@@ -132,6 +183,12 @@ app.get('/api/stats', (req, res) => {
     res.json({ totalNotes, topRated });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT} (In-Memory DB)`);
+// Serve index.html for all other routes to support SPA feel
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
+
